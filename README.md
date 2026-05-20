@@ -111,28 +111,42 @@ go run main.go \
 ## How It Works
 
 ```
-Ingress created/updated with annotation
-         |
-         v
-Controller extracts hosts from spec.rules
-         |
-         v
-Adds NEW domains to Firebase (skips existing ones)
-         |
-         v
-Tracks added domains in managed-domains annotation
-Adds firebase-cleanup finalizer
-         |
-         v
-(later) Ingress deleted or namespace deleted
-         |
-         v
-Finalizer blocks deletion
-Controller removes ONLY domains it tracked
-Removes finalizer -> deletion completes
-```
+┌──────────────────────────────────────────────────────┐
+│  SYNC: Ingress created or updated                    │
+├──────────────────────────────────────────────────────┤
+│                                                      │
+│  1. Ingress has firebase-sync: "true" annotation?    │
+│     NO  → skip                                       │
+│     YES ↓                                            │
+│                                                      │
+│  2. Extract hosts from spec.rules[].host             │
+│     e.g. ["app.example.com", "api.example.com"]      │
+│                                                      │
+│  3. For each host:                                   │
+│     - Already in Firebase? → skip                    │
+│     - New? → add to Firebase                         │
+│                                                      │
+│  4. Store added domains in managed-domains annotation │
+│     Add firebase-cleanup finalizer                   │
+│                                                      │
+└──────────────────────────────────────────────────────┘
 
-**Key safety property:** The controller only removes domains it added. Domains added manually through the Firebase console are never touched.
+┌──────────────────────────────────────────────────────┐
+│  CLEANUP: Ingress or namespace deleted               │
+├──────────────────────────────────────────────────────┤
+│                                                      │
+│  1. Finalizer blocks Kubernetes from deleting        │
+│                                                      │
+│  2. Read managed-domains annotation                  │
+│     → only domains THIS controller added             │
+│                                                      │
+│  3. Remove those domains from Firebase               │
+│     (manually-added domains are never touched)       │
+│                                                      │
+│  4. Remove finalizer → deletion completes            │
+│                                                      │
+└──────────────────────────────────────────────────────┘
+```
 
 ## Building
 
