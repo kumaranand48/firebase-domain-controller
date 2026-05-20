@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firebase-domain-controller
+  namespace: devops
+  labels:
+    app: firebase-domain-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: firebase-domain-controller
+  template:
+    metadata:
+      labels:
+        app: firebase-domain-controller
+    spec:
+      serviceAccountName: firebase-domain-controller
+      containers:
+        - name: controller
+          image: your-registry/firebase-domain-controller:latest
+          imagePullPolicy: Always
+          args:
+            - --firebase-creds=/etc/firebase/service-account.json
+          env:
+            - name: ANNOTATION_DOMAIN
+              value: "controller.example.com"  # REQUIRED: change to your domain
+          volumeMounts:
+            - name: firebase-credentials
+              mountPath: /etc/firebase
+              readOnly: true
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+      volumes:
+        - name: firebase-credentials
+          secret:
+            secretName: firebase-credentials
+            items:
+              - key: service-account.json
+                path: service-account.json
