@@ -8,7 +8,14 @@ Firebase Authentication requires every domain your app runs on to be in the "Aut
 
 ## What This Does
 
-This controller watches Ingress resources in your cluster. When it sees an Ingress with a specific annotation, it automatically:
+Add this annotation to any Ingress you want the controller to manage:
+
+```yaml
+annotations:
+  <your-annotation-domain>/firebase-sync: "true"
+```
+
+The `<your-annotation-domain>` is configured when you deploy the controller (e.g. `controller.example.com`). Once annotated, the controller automatically:
 - **Adds** all `spec.rules[].host` domains to Firebase authorized domains
 - **Tracks** which domains it added (so it never touches manually-added ones)
 - **Removes** those domains when the Ingress is deleted
